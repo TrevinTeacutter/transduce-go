@@ -4,7 +4,7 @@ import (
 	"context"
 	"iter"
 
-	"github.com/TrevinTeacutter/transduce-go/v1"
+	"github.com/TrevinTeacutter/transduce-go/pkg/v1"
 )
 
 func Into[A, B any, R []B](ctx context.Context, value A, transducer transduce.Transducer[A, B, R], initial R) (R, error) {

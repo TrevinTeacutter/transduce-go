@@ -3,7 +3,7 @@ package functions
 import (
 	"context"
 
-	"github.com/TrevinTeacutter/transduce-go/v1"
+	"github.com/TrevinTeacutter/transduce-go/pkg/v1"
 )
 
 type Predicate[T any] func(value T) bool

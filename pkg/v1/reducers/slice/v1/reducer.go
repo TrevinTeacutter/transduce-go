@@ -3,7 +3,7 @@ package slice
 import (
 	"context"
 
-	"github.com/TrevinTeacutter/transduce-go/v1"
+	"github.com/TrevinTeacutter/transduce-go/pkg/v1"
 )
 
 var _ transduce.Reducer[any, []any] = (*Reducer[any])(nil)
