@@ -1,6 +1,15 @@
 package transduce
 
-import "context"
+import (
+	"context"
+
+	"github.com/TrevinTeacutter/transduce-go/internal/errors"
+)
+
+const (
+	NilStreamYieldError = errors.Const("yield must not be nil")
+	NilStreamError      = errors.Const("stream must not be nil")
+)
 
 type StreamYield[T any] func(context.Context, T) error
 

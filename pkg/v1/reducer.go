@@ -1,6 +1,14 @@
 package transduce
 
-import "context"
+import (
+	"context"
+
+	"github.com/TrevinTeacutter/transduce-go/internal/errors"
+)
+
+const (
+	NilReducerError = errors.Const("reducer must not be nil")
+)
 
 var _ Reducer[any, any] = (*reducer[any, any])(nil)
 

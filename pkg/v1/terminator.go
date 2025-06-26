@@ -1,3 +1,7 @@
 package transduce
 
-const Terminator = basic("end of stream")
+import (
+	"github.com/TrevinTeacutter/transduce-go/internal/errors"
+)
+
+const Terminator = errors.Const("end of stream")

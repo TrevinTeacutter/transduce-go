@@ -2,96 +2,33 @@ package functions
 
 import (
 	"context"
-	"iter"
 
+	"github.com/TrevinTeacutter/transduce-go/internal/errors"
 	"github.com/TrevinTeacutter/transduce-go/pkg/v1"
 )
 
-func Into[A, B any, R []B](ctx context.Context, value A, transducer transduce.Transducer[A, B, R], initial R) (R, error) {
-	step := func(ctx context.Context, value B, accumulator R) (R, error) {
-		return append(accumulator, value), nil
-	}
+const (
+	NilFunctionError       = errors.Const("function must not be nil")
+	NilPredicateError      = errors.Const("predicate must not be nil")
+	NilWithFunctionError   = errors.Const("with function must not be nil")
+	NilBinaryFunctionError = errors.Const("binary function must not be nil")
+)
 
-	return transduce.Reduce(ctx, value, transducer(transduce.Completing(step)), initial)
-}
+// Function is what it sounds like, it takes in a value and returns either another value (which could be of the same type)
+// or an error.
+type Function[A, B any] func(ctx context.Context, value A) (B, error)
 
-func IntoSeq[A, B any, R []B](ctx context.Context, iterator iter.Seq[A], transducer transduce.Transducer[A, B, R], initial R) (R, error) {
-	step := func(ctx context.Context, value B, accumulator R) (R, error) {
-		return append(accumulator, value), nil
-	}
+// Predicate is a special function that returns a boolean, this is used particularly by Filter-esque transducers.
+type Predicate[T any] Function[T, bool]
 
-	return transduce.ReduceSeq(ctx, iterator, transducer(transduce.Completing(step)), initial)
-}
+// WithFunction is a bit more overhead than your typical function, but allows you to do cleanup after all downstream
+// processing has taken place. A good example of a use case is times when you need to consume a file chunk by chunk,
+// but also don't want to read all of it into memory like you would with a normal Function. This allows you to do that.
+type WithFunction[A, B, R any] func(ctx context.Context, value A, reducer transduce.Reducer[B, R], accumulator R) (R, error)
 
-func IntoStream[A, B any, R []B](ctx context.Context, stream transduce.Stream[A], transducer transduce.Transducer[A, B, R], initial R) (R, error) {
-	step := func(ctx context.Context, value B, accumulator R) (R, error) {
-		return append(accumulator, value), nil
-	}
+// BinaryFunction is like a Function but has two arguments to process rather than one, useful
+// for cases like handling maps or slices where you need the index as part of the processing.
+type BinaryFunction[A, B, C any] func(ctx context.Context, left A, right B) (C, error)
 
-	return transduce.ReduceStream(ctx, stream, transducer(transduce.Completing(step)), initial)
-}
-
-func Map[A, B, R any](function Function[A, B]) transduce.Transducer[A, B, R] {
-	return func(reducer transduce.Reducer[B, R]) transduce.Reducer[A, R] {
-		return transduce.NewReducer(
-			reducer.Initial,
-			reducer.Result,
-			func(ctx context.Context, value A, accumulator R) (R, error) {
-				result, err := function(ctx, value)
-				if err != nil {
-					return accumulator, err
-				}
-
-				return reducer.Step(ctx, result, accumulator)
-			},
-		)
-	}
-}
-
-func Filter[A, R any](predicate Predicate[A]) transduce.Transducer[A, A, R] {
-	return func(reducer transduce.Reducer[A, R]) transduce.Reducer[A, R] {
-		return transduce.NewReducer(
-			reducer.Initial,
-			reducer.Result,
-			func(ctx context.Context, value A, accumulator R) (R, error) {
-				if predicate(value) {
-					return reducer.Step(ctx, value, accumulator)
-				}
-
-				return accumulator, nil
-			},
-		)
-	}
-}
-
-func SplitSeq[A iter.Seq[B], B, R any]() transduce.Transducer[A, B, R] {
-	return func(reducer transduce.Reducer[B, R]) transduce.Reducer[A, R] {
-		return transduce.NewReducer(
-			reducer.Initial,
-			reducer.Result,
-			func(ctx context.Context, value A, accumulator R) (R, error) {
-				return transduce.ReduceSeq[B, R](ctx, iter.Seq[B](value), reducer, accumulator)
-			},
-		)
-	}
-}
-
-func SplitStream[A transduce.Stream[B], B, R any]() transduce.Transducer[A, B, R] {
-	return func(reducer transduce.Reducer[B, R]) transduce.Reducer[A, R] {
-		return transduce.NewReducer(
-			reducer.Initial,
-			reducer.Result,
-			func(ctx context.Context, value A, accumulator R) (R, error) {
-				return transduce.ReduceStream[B, R](ctx, transduce.Stream[B](value), reducer, accumulator)
-			},
-		)
-	}
-}
-
-func MapSplitSeq[A any, B iter.Seq[C], C, R any](function Function[A, B]) transduce.Transducer[A, C, R] {
-	return transduce.Compose(Map[A, B, R](function), SplitSeq[B, C, R]())
-}
-
-func MapSplitStream[A any, B transduce.Stream[C], C, R any](function Function[A, B]) transduce.Transducer[A, C, R] {
-	return transduce.Compose(Map[A, B, R](function), SplitStream[B, C, R]())
-}
+// note: technically there might be a case for a TrinaryFunction and the like, but would prefer to avoid that
+// explosion and keep the surface area of the API pretty small.
