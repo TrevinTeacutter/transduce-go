@@ -7,13 +7,19 @@ import (
 	transduce "github.com/TrevinTeacutter/transduce-go/pkg/v1"
 )
 
+type Option func(*stream)
+
 type stream struct {
 	interval time.Duration
 }
 
-func Stream(interval time.Duration) transduce.Stream[Tick] {
+func Stream(options ...Option) transduce.Stream[Tick] {
 	s := &stream{
-		interval: interval,
+		interval: time.Second,
+	}
+
+	for _, option := range options {
+		option(s)
 	}
 
 	return s.Stream
@@ -46,7 +52,7 @@ func (s *stream) Stream(ctx context.Context, yield transduce.StreamYield[Tick]) 
 				// We could use the current time, but for most use cases, this value is likely
 				// to be ignored as we are just using this to trigger some logic on a frequent
 				// interval
-				timestamp: tick,
+				Timestamp: tick,
 			})
 			if err != nil {
 				// Would prefer to log this err and move on, but avoiding a logger dependency
